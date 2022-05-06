@@ -7,8 +7,7 @@
     // @run-at       document-body
     // @grant        none
     // ==/UserScript==
-
-
+    
     (function(w) {
         Object.prototype.SetStyleObject = function(styleObject){
             for (var key in styleObject)
@@ -16,6 +15,7 @@
                 this.style[key] = styleObject[key];
             }
         };
+        Object
         var modVersion = "v1.5",
             renderMode = 3, // 3 - normal, 2 - optimized, 1 - simple (mobile)
             normalMode = false,
@@ -31,7 +31,7 @@
                 position: "fixed",
                 opacity: 1,
                 zIndex: 7
-            }
+            },
             inpNick = null,
             currentIP = null,
             retry = 0,
@@ -262,7 +262,7 @@
                         margin: "0 auto",
                         padding: "10px 0"
                     })
-                    div.innerHTML += '<a target="_blank" style="color: #56ac81; opacity: 2;">| Q <strong>→</strong> Back to main menu |<br/> | ESC <strong>→</strong> Quick Restart |<br/>| Z <strong>→</strong> Reset Zoom |<br/> | S <strong>→</strong> Change Skin |</a>';
+                    div.innerHTML += '<a target="_blank" style="color: #56ac81; opacity: 2;">| Q <strong>→</strong> Back to main menu |<br/> | SPACE <strong>→</strong> Reset Zoom |<br/> | ESC <strong>→</strong> Quick Restart |<br/> | S <strong>→</strong> Change Skin |</a>';
                 login.appendChild(div);
                 // Menu container
                 var sltMenu = document.createElement("div");
@@ -426,7 +426,7 @@
                 },
                 Setting: {
                     Height: 33,
-                    Width: 85,
+                    Width: 87,
                     BorderSize: 100,
                     Margin: 12,
                     HeaderWidth: null,
@@ -968,6 +968,7 @@
         }
         function GetMousePosition(e)
         {
+
                 window.mouseX = e.clientX;
                 window.mouseY = e.clientY;
         }
