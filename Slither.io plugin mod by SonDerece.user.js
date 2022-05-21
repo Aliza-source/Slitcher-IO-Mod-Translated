@@ -15,103 +15,111 @@
                 this.style[key] = styleObject[key];
             }
         };
-        Object
-        var modVersion = "v1.5",
+        let modVersion = "v1.5",
             renderMode = 3, // 3 - normal, 2 - optimized, 1 - simple (mobile)
             normalMode = false,
-            gameFPS = null,
-            positionHUD = null,
-            ipHUD = null,
-            fpsHUD = null,
-            login = null,
-            styleHUD = {
-                color: "#FFF",
-                fontFamily: "Arial",
-                fontSize: "20px",
-                position: "fixed",
-                opacity: 1,
-                zIndex: 7
-            },
-            inpNick = null,
-            currentIP = null,
-            retry = 0,
-            bgImage = null,
-
-            Crosshair_enabled = true,
-            Crosshair_size = 35,
-            Crosshair_radius = 130,
-            Crosshair_offset = (Crosshair_size / 2) + 7,
-
-            CrosshairElement = null,
-            crosshairSize = null,
-            crosshairRadius = null,
-            crosshairToggle = null,
-
-            mouseLoop = null,
-            
-            SettingsButton = null,
-            SettingsButtonOuter = null,
-            SettingsMenuElement = null,
-            Center = [ (window.innerWidth / 2), (window.innerHeight / 2)],
-            offsetCenter = [ Center[0] - Crosshair_offset, Center[1] - Crosshair_offset];
+            gameFPS = undefined,
+            positionHUD = undefined,
+            ipHUD = undefined,
+            fpsHUD = undefined,
+            login = undefined,
+            inpNick = undefined,
+            currentIP = undefined,
+            bgImage = undefined,
+            retry = 0;
+       
         
+        const crosshair = {
+                enabled: true,
+                size: 35,
+                radius: 130,
+                offset: (35 / 2) + 7,
+        };
+        const crosshairMenu = {
+            element: undefined,
+            size: undefined,
+            radius: undefined,
+            toggleButton: undefined,
+        };
+
+        let CrosshairElement = undefined,
+            crosshairSize = undefined,
+            crosshairRadius = undefined,
+            crosshairToggle = undefined,
+            mouseLoop = undefined,
+            SettingsButton = undefined,
+            SettingsButtonOuter = undefined,
+            SettingsMenuElement = undefined;
+
         function GetGlobalsFromStorage()
         {
-            const size = w.localStorage.getItem("Crosshair_size");
-            const radius = w.localStorage.getItem("Crosshair_radius");
-            const enabled = w.localStorage.getItem("Crosshair_enabled");
-            if(size !== null){
-                Crosshair_size = size;
-            }
-            if(radius !== null) {
-                Crosshair_radius = radius;
-            }
-            if(enabled !== null) {
-                Crosshair_enabled = JSON.parse(enabled)
-            }
+            const size = window.localStorage.getItem("crosshair_size");
+            const radius = window.localStorage.getItem("crosshair_radius");
+            const enabled = window.localStorage.getItem("crosshair_enabled");
+            if(size) crosshair.size = size;
+            if(radius) crosshair.radius = radius;
+            if(enabled) crosshair.enabled = JSON.parse(enabled);
         }
         
         
         GetGlobalsFromStorage();
 
+
+        function create(type){
+            return function(id, className, style){
+                let div = document.createElement(type);
+                    div.SetStyleObject(style);
+                    if(id) div.id = id;
+                    if(className) div.class = className;
+                return div;
+            }
+        }
+        
         function init() {
-            // Append DIVs
-            appendDiv("position-hud", "nsi", {...styleHUD, right: "30", bottom: "120px"});
-            appendDiv("ip-hud", "nsi", {...styleHUD, right: "30", top:"220px"});
-            appendDiv("fps-hud", "nsi", {...styleHUD, right: "30", top: "250px"});
-            appendDiv(
-                "CrosshairElement",
-                "nsi",
-                {
-                    width: Crosshair_size + "px",
-                    height: Crosshair_size + "px",
+            const style = {
+                hud: {
+                    color: "#FFF",
+                    fontFamily: "Arial",
+                    fontSize: "20px",
+                    position: "fixed",
+                    opacity: 1,
+                    zIndex: 7
+                },  
+                crosshair: {
+                    width: crosshair.size + "px",
+                    height: crosshair.size + "px",
                     display: "none",
                     pointerEvents: "none",
                     zIndex: 999,
                     position: "absolute",
-                    transform: "translate(" +Center[0]+ "px,"+Center[1]+ "px)"
-                },
-                "img"
-            )
+                    transform: "translate(" + window.innerWidth / 2 + "px,"+ window.innerHeight / 2 + "px)"
+                }              
+            };
 
-            CrosshairElement = document.getElementById("CrosshairElement");
-            positionHUD = document.getElementById("position-hud");
-            ipHUD = document.getElementById("ip-hud");
-            fpsHUD = document.getElementById("fps-hud");
+            const createDiv = create("div");
+            const createImg = create("img");
+
+            positionHUD = createDiv("position-hud", "nsi", {...style.hud, right: "30", bottom: "120px"});
+            document.body.appendChild(positionHUD);
+
+            ipHUD = createDiv("ip-hud", "nsi", {...style.hud, right: "30", top:"220px"});
+            document.body.appendChild(ipHUD);
+
+            fpsHUD = createDiv("fps-hud", "nsi", {...style.hud, right: "30", top: "250px"});
+            document.body.appendChild(fpsHUD);
+
+            CrosshairElement = createImg("CrosshairElement", "nsi", style.crosshair)
+            CrosshairElement.setAttribute("src", "https://i.imgur.com/R7JMiL1.png")
+            CrosshairElement.size = function(crosshair_size){this.style["width"] = crosshair_size + "px"; this.style["height"] = crosshair_size + "px"}
+            document.body.appendChild(CrosshairElement);
+            
             // Add zoom
             if (/firefox/i.test(navigator.userAgent)) {
                 document.addEventListener("DOMMouseScroll", zoom, false);
             } else {
                 document.body.onmousewheel = zoom;
             }
-            // Keys
-            const ShortcutKeys = {
-                MainMenu: 'Q',
-                QuickRestart: 'Escape',
-                ResertZoom: 'SPACE',
-                ChangeSkin: 'S'
-            }
-            w.addEventListener("keydown", function(e) {
+            window.addEventListener("keydown", function(e) {
                 switch(e.keyCode) {
                     // ESC - quick resp
                     case 27: forceConnect();
@@ -153,20 +161,18 @@
                     }
                     object.style.opacity = opacity > 0.5 ? 4*Math.pow((opacity-1),3)+1 : 4*Math.pow(opacity,3);
                 })();
-                return
         }
         function ShowCrosshair()
         {
-            CrosshairElement.style.display = "block"
+            CrosshairElement.style['display'] = "block"
             updateMousePositon();
-            return
         }
         function HideCrosshair()
         {
-            CrosshairElement.style.display = "none";
+            CrosshairElement.style['display'] = "none";
             ClearMousePosition()
         }
-        startShowGame = () => {
+        startShowGame = function(){
             //internal code;
             llgmtm = Date.now();
             login_iv = setInterval(loginFade, 25);
@@ -177,13 +183,12 @@
             lb_fr = -1
 
             //functions
-            if(Crosshair_enabled)
+            if(crosshair.enabled)
             {
                 ShowCrosshair();
                 OnGameOver();
             }
         }
-        console.log(Crosshair_enabled);
         function OnGameOver(){
             let timer = setInterval(() => {
                 if (window.dead_mtm > -1){
@@ -192,56 +197,29 @@
                 }
             }, 2400)
         }
-
-        // Append DIV
-        function appendDiv(id, className, styleObject, elementType = "div", tags) {
-            var div = document.createElement(elementType);
-            if(elementType === "img"){
-                div.setAttribute("src", "https://i.imgur.com/R7JMiL1.png")
-            }
-            if (id) {
-                div.id = id;
-            }
-            if (className) {
-                div.className = className;
-            }
-            if (styleObject) {
-                div.SetStyleObject(styleObject);
-            }
-
-            document.body.appendChild(div);
-        }
-
+       
         // Zoom
         const Zoom = {
             Level: 0.9,
             Reset: true,
             Default: 0.9
         }
+
         function zoom(e) {
-            if (!w.gsc) {
-                return;
-            }
-            w.gsc *= Math.pow(0.9, e.wheelDelta / -120 || e.detail / 2 || 0);
-            Zoom.Level = w.gsc;
+            if (!window.gsc) return;
+            window.gsc *= Math.pow(0.9, e.wheelDelta / -120 || e.detail / 2 || 0);
+            Zoom.Level = window.gsc;
             Zoom.Reset = false;
 
         }
             // Reset zoom
         function resetZoom() {
             if(Zoom.Reset){
-            w.gsc = Zoom.Level;
-            Zoom.Reset = false;
-            return
-            }
-            w.gsc = Zoom.Default;
-            Zoom.Reset = true;
-        }
-        // Get console log
-        function getConsoleLog(log) {
-            //w.console.logOld(log);
-            if (log.indexOf("FPS") != -1) {
-                gameFPS = log;
+                window.gsc = Zoom.Level;
+                Zoom.Reset = false;
+            } else {
+                window.gsc = Zoom.Default;
+                Zoom.Reset = true;
             }
         }
         // Set menu
@@ -251,8 +229,8 @@
                 // Load settings
                 loadSettings();
                 // Message
-                var div = document.createElement("div");
-                    div.SetStyleObject({
+                const styles =  {
+                    1:{
                         width: "300px",
                         color: "#FFF",
                         fontFamily: "'Lucida Sans Unicode', 'Lucida Grande', sans-serif",
@@ -261,13 +239,8 @@
                         opacity: "0.5",
                         margin: "0 auto",
                         padding: "10px 0"
-                    })
-                    div.innerHTML += '<a target="_blank" style="color: #56ac81; opacity: 2;">| Q <strong>→</strong> Back to main menu |<br/> | SPACE <strong>→</strong> Reset Zoom |<br/> | ESC <strong>→</strong> Quick Restart |<br/> | S <strong>→</strong> Change Skin |</a>';
-                login.appendChild(div);
-                // Menu container
-                var sltMenu = document.createElement("div");
-                    sltMenu.id = "ServerMenu";
-                    sltMenu.SetStyleObject({
+                    },
+                    Menu_container:{
                         position: "relative",
                         width:"260px",
                         color:"#8058D0",
@@ -278,39 +251,23 @@
                         textAlign:"center",
                         margin:"0 auto 100px auto",
                         padding:"10px 14px"
-                    })
-                    sltMenu.innerHTML = "Slither.io Mod";
-                login.appendChild(sltMenu);
-                // IP input container
-                var div = document.createElement("div");
-                    div.SetStyleObject({
+                    },
+                    IP_input_container: {
                         color:"#8058D0",
                         backgroundColor:"#919191",
                         borderRadius:"29px",
                         margin:"10 auto",
                         padding:"8px"
-                    })
-                sltMenu.appendChild(div);
-                // IP input
-                var input = document.createElement("input");
-                    input.id = "server-ip";
-                    input.type = "text";
-                    input.placeholder = "Server Address";
-                    input.SetStyleObject({
+                    },
+                    IP_input: {
                         height:"24px",
                         display:"inline-block",
                         background:"none",
                         border:"none",
                         outline:"none",
                         textAlign:"center"
-                    })
-                div.appendChild(input);
-                // Connect (play) button
-                var button = document.createElement("input");
-                    button.id = "connect-btn";
-                    button.type = "button";
-                    button.value = "Play";
-                    button.SetStyleObject({
+                    },
+                    play_button: {
                         height:"24px",
                         display:"inline-block",
                         borderRadius:"12px",
@@ -320,71 +277,86 @@
                         outline:"none",
                         cursor:"pointer",
                         padding:"0 20px"
-                    })
-                div.appendChild(button);
-                // Select server container
-                var div = document.createElement("div");
-                    div.SetStyleObject({
+                    },
+                    Select_server_container: {
                         backgroundColor:"#919191",
                         borderRadius:"29px",
                         margin:"10 auto",
                         padding:"8px"
-                    })
-                sltMenu.appendChild(div);
-                // Select server
-                var select = document.createElement("select");
-                    select.id = "select-srv";
-                    select.SetStyleObject({
+                    },
+                    Select_server: {
                         background:"none",
                         border:"none",
                         outline:"none"
-                    })
-                var option = document.createElement("option");
-                    option.value = "";
-                    option.text = "★ Server Selection ★";
-                select.appendChild(option);
-                div.appendChild(select);
-                // Select graph container
-                var div = document.createElement("div");
-                    div.SetStyleObject({
+                    },
+                    Select_graph_container:{
                         backgroundColor:"#A5A5A5",
                         borderRadius:"29px",
                         margin:"10 auto",
                         padding:"8px"
-                    })
-                sltMenu.appendChild(div);
-                // Select graph
-                var select = document.createElement("select");
-                    select.id = "select-graph";
-                        select.SetStyleObject({
-                            background:"none",
-                            border:"none",
-                            outline:"none"
-                        })
+                    },
+                    Select_graph: {
+                        background:"none",
+                        border:"none",
+                        outline:"none"
+                    },
+                }
+                const createDiv = create('div');
+                const createInput = create("input");
+                const createSelect = create("select");
+                const createOption = create("option");
+
+                var div = createDiv(undefined, undefined, styles['1']);
+                    div.innerHTML += '<a target="_blank" style="color: #56ac81; opacity: 2;">| Q <strong>→</strong> Back to main menu |<br/> | SPACE <strong>→</strong> Reset Zoom |<br/> | ESC <strong>→</strong> Quick Restart |<br/> | S <strong>→</strong> Change Skin |</a>';
+                    login.appendChild(div);
+                var sltMenu = createDiv("ServerMenu", undefined, styles.Menu_container);
+                    sltMenu.innerHTML = "Slither.io Mod";
+                    login.appendChild(sltMenu);
+                var div = createDiv(undefined, undefined, styles.IP_input_container)
+                    sltMenu.appendChild(div);
+                var input = createInput("server-ip", undefined, styles.IP_input)
+                    input.type = "text";
+                    input.placeholder = "Server Address";
+                    div.appendChild(input);
+                var button = createInput("connect-btn", undefined, styles.play_button)
+                    button.type = "button";
+                    button.value = "Play";
+                    div.appendChild(button);
+                var div = createDiv(undefined, undefined, styles.Select_server_container)
+                    sltMenu.appendChild(div);
+                var select = createSelect("select-srv", undefined, styles.Select_server)
+                var option = document.createElement("option");
+                    option.value = "";
+                    option.text = "★ Server Selection ★";
+
+                select.appendChild(option);
                 div.appendChild(select);
+
+                var div = createDiv(undefined, undefined, styles.Select_graph_container)
+                    sltMenu.appendChild(div);
+                var select = createSelect("select-graph", undefined, styles.Select_graph);
+                    div.appendChild(select);
                 var option = document.createElement("option");
                     option.value = "3";
                     option.text = "Graphics: Normal ✓";
-                select.appendChild(option);
+                    select.appendChild(option);
                 var option = document.createElement("option");
                     option.value = "2";
                     option.text = "Graphics: Optimized ✓";
                 select.appendChild(option);
+
                 var option = document.createElement("option");
                     option.value = "1";
                     option.text = "Graphics: Low ✓";
                 select.appendChild(option);
-                // Get IP input
+
                 inpIP = document.getElementById("server-ip");
-                // Get nick
                 var nick = document.getElementById("nick");
+
                 nick.addEventListener("input", getNick, false);
-                // Force connect
-                var connectBtn = document.getElementById("connect-btn");
-                connectBtn.onclick = forceConnect;
-                // Get servers list
+                button.addEventListener("click", forceConnect)
                 getServersList();
-                // Set graphic mode
+
                 var selectGraph = document.getElementById("select-graph");
                 if (renderMode == 1)
                 {
@@ -429,7 +401,7 @@
                     Width: 87,
                     BorderSize: 100,
                     Margin: 12,
-                    HeaderWidth: null,
+                    HeaderWidth: undefined,
                     InputWidth: 30
                 },
                 RadioButton: {
@@ -443,15 +415,20 @@
                 },
                 Input:
                 {
-                    HeaderWidth: null,
+                    HeaderWidth: undefined,
                     Width: 30,
                     FontSize: 13,
+                },
+                SetHeaderWidth: function(){
+                    this.Input.HeaderWidth = (this.Menu.Width * (this.Setting.Width * 0.01));
                 },
 
                 SettingsMenu_BG: "#1E262E"
         };
-        Settings.Input.HeaderWidth = (Settings.Menu.Width * (Settings.Setting.Width * 0.01));
 
+        Settings.SetHeaderWidth();
+
+        
         function CreateSetting(InputId, DefaultText, DefaultInputText, SettingType = "input")
         {
             const Stylesheets = {
@@ -513,71 +490,49 @@
                     "padding": "0x",
                     "position": "relative",
                     "cursor":"pointer",
-                    "backgroundColor": (Crosshair_enabled ? Settings.RadioButton.ToggleOnColor : Settings.RadioButton.ToggleOffColor)
+                    "backgroundColor": (crosshair.enabled ? Settings.RadioButton.ToggleOnColor : Settings.RadioButton.ToggleOffColor)
                 
                 }
             }
-            if(Crosshair_enabled)
-            {
-                Stylesheets.RadioButton["right"] = "0px"
-            }
-            else 
-            {
-                Stylesheets.RadioButton["left"] = "0px"
-            }
+            if(crosshair.enabled) Stylesheets.RadioButton["right"] = "0px";
+            else Stylesheets.RadioButton["left"] = "0px";
+            
+            const createDiv = create("div");
+            const createParagraph = create("p");
+            const createInput = create("input");
 
-            let Setting_Outer = document.createElement("div");
-                Setting_Outer.SetStyleObject(Stylesheets.SettingOuter);
-                Setting_Outer.class = "Settings";
-
-            let SettingInner_TextWrapper = document.createElement("div");
-                SettingInner_TextWrapper.SetStyleObject(Stylesheets.SettingInner_TextWrapper);
-                SettingInner_TextWrapper.class = "Settings";
-
-            let SettingInner_Text = document.createElement("p");
-                SettingInner_Text.SetStyleObject(Stylesheets.SettingInner_Text);
-                SettingInner_Text.textContent = DefaultText;
-                SettingInner_Text.class = "Settings";
-
-            let SettingInner_InputWrapper = document.createElement("div")
-                SettingInner_InputWrapper.SetStyleObject(Stylesheets.SettingInner_InputWrapper);
+            let Setting_Outer = createDiv(undefined, "Settings", Stylesheets.SettingOuter);
+            let SettingInner_TextWrapper = createDiv(undefined, "Settings", Stylesheets.SettingInner_TextWrapper);
+            let SettingInner_InputWrapper = createDiv(undefined, "Settings", Stylesheets.SettingInner_InputWrapper)
                 SettingInner_InputWrapper.setAttribute("inputType", SettingType)
-                SettingInner_InputWrapper.class = "Settings";
+            let SettingInner_Text = createParagraph(undefined, "Settings", Stylesheets.SettingInner_Text);
+                SettingInner_Text.textContent = DefaultText;
 
-
-            let SettingInner_Input = null;
-
+            let SettingInner_Input = undefined;
             if(SettingType === "input")
             {
-                SettingInner_Input = document.createElement("input");
+                SettingInner_Input = createInput(InputId, "Settings", Stylesheets.SettingInner_Input)
                 SettingInner_Input.setAttribute("inputType", SettingType)
                 SettingInner_Input.value = DefaultInputText;
-                SettingInner_Input.class = "Settings";
-                SettingInner_Input.SetStyleObject(Stylesheets.SettingInner_Input);
-                SettingInner_Input.id = InputId;
             }
             else if (SettingType === "radiobutton")
             {
-                RadioButtonWrapper = document.createElement("div");
-                RadioButtonWrapper.class = "Settings";
-                RadioButtonWrapper.id = InputId;
-                RadioButtonWrapper.SetStyleObject(Stylesheets.RadioButtonWrapper)
-
-                RadioButton = document.createElement("div")
-                RadioButton.class = "Settings";
-                RadioButton.setAttribute("inputType", SettingType)
-                RadioButton.setAttribute("toggle", true);
-
-                RadioButton.SetStyleObject(Stylesheets.RadioButton)
-                RadioButtonWrapper.appendChild(RadioButton)
+                RadioButtonWrapper = createDiv(InputId, "Settings", Stylesheets.RadioButtonWrapper);
+                RadioButton = createDiv(undefined, "Settings", Stylesheets.RadioButton)
+                    RadioButton.setAttribute("inputType", SettingType)
+                    RadioButton.setAttribute("toggle", true);
+                    RadioButtonWrapper.appendChild(RadioButton)
                 SettingInner_Input = RadioButtonWrapper;
             }
+
             SettingInner_InputWrapper.appendChild(SettingInner_Input);
             SettingInner_TextWrapper.appendChild(SettingInner_Text);
             Setting_Outer.appendChild(SettingInner_TextWrapper);
             Setting_Outer.appendChild(SettingInner_InputWrapper);
+            
             return Setting_Outer;
         }
+
 
     function CreateSettingsMenu(){
             const Stylesheet = {
@@ -616,53 +571,31 @@
                     "position": "relative"
                 }
             }
-
-            let SettingsButton = document.createElement("div");
-                SettingsButton.SetStyleObject(Stylesheet.buttonOuter);
-                SettingsButton.id = "SettingsButtonOuter";
-                SettingsButton.class = "Settings"
-
-            let SettingButtonInner = document.createElement("div");
-                SettingButtonInner.SetStyleObject(Stylesheet.buttonInner);
-                SettingButtonInner.id = "SettingButtonInner";
-                SettingButtonInner.class = "Settings"
-            let SettingsButtonHover = document.createElement("div");
-                SettingsButtonHover.id = "SettingsButtonHover"
-                SettingsButtonHover.class = "Settings";
-                SettingsButtonHover.SetStyleObject({"width": "100%", "height": "100%", "cursor":"pointer", "position":"absolute", "left":"0px", "top":"0px"})
-            let SettingsMenu = document.createElement("div");
-                SettingsMenu.SetStyleObject(Stylesheet.menuWrapper);
-                SettingsMenu.id = "SettingsMenu";
-                SettingsMenu.class = "Settings"
-            let SettingsMenuInner = document.createElement("div");
-                SettingsMenuInner.SetStyleObject(Stylesheet.menuInner);
-                SettingsMenuInner.class = "Settings"
-
+            const createDiv = create("div");
+            let SettingsButton = createDiv("SettingsButtonOuter", "Settings", Stylesheet.buttonOuter)
+            let SettingButtonInner = createDiv("SettingButtonInner", "Settings", Stylesheet.buttonInner)
+            let SettingsButtonHover = createDiv("SettingsButtonHover", "Settings", {"width": "100%", "height": "100%", "cursor":"pointer", "position":"absolute", "left":"0px", "top":"0px"})
+            let SettingsMenu = createDiv("SettingsMenu", "Settings", Stylesheet.menuWrapper)
+            let SettingsMenuInner = createDiv("Settings_Inner","Settings", Stylesheet.menuInner)
             let crossHairToggle = CreateSetting("crosshairToggle", "Crosshair: ","","radiobutton")
-            let crossHairSize = CreateSetting("crosshairSize", "Crosshair size: ", Crosshair_size)
-            let crossHairRadius = CreateSetting("crosshairRadius", "Crosshair radius: ", Crosshair_radius)
+            let crossHairSize = CreateSetting("crosshairSize", "Crosshair size: ", crosshair.size)
+            let crossHairRadius = CreateSetting("crosshairRadius", "Crosshair radius: ", crosshair.radius)
 
 
             SettingsMenuInner.appendChild(crossHairToggle);
             SettingsMenuInner.appendChild(crossHairRadius);
             SettingsMenuInner.appendChild(crossHairSize);
-
-
             SettingsMenu.appendChild(SettingsMenuInner);
             SettingButtonInner.appendChild(SettingsMenu);
-
             SettingsButton.appendChild(SettingButtonInner);
             SettingsButton.appendChild(SettingsButtonHover);
 
-
             let ServerMenu = document.getElementById("ServerMenu")
             ServerMenu.appendChild(SettingsButton);
-
             crosshairRadius = document.getElementById("crosshairRadius");
             crosshairSize = document.getElementById("crosshairSize");
             crosshairToggle = document.getElementById("crosshairToggle")
             SettingsMenuElement = document.getElementById("SettingsMenu");
-
             SettingsButton = document.getElementById("SettingsButtonHover");
             SettingsButtonOuter = document.getElementById("SettingsButtonOuter");
 
@@ -670,38 +603,38 @@
             crosshairRadius.addEventListener("input", UpdateCrosshairRadius);
             crosshairSize.addEventListener("input", UpdateCrosshairSize);
         };
-    
 
         function sanitizeInput(input){
             return input.replace(/[^0-9]/g, "").slice(0,3)
         };
 
-        function toggleButton(object, enabled)
+        function toggleButton(enabled)
         {
             if(enabled){
-                object.parentElement.style["backgroundColor"] = Settings.RadioButton.ToggleOnColor;
-                object.style["right"] = "0px"
-                object.style.removeProperty("left");
-                return;
+                this.parentElement.style["backgroundColor"] = Settings.RadioButton.ToggleOnColor;
+                this.style["right"] = "0px";
+                this.style.removeProperty("left");
+            } else {
+                this.parentElement.style["backgroundColor"] = Settings.RadioButton.ToggleOffColor;
+                this.style["left"] = "0px";
+                this.style.removeProperty("right");
             }
-            object.parentElement.style["backgroundColor"] = Settings.RadioButton.ToggleOffColor;
-            object.style["left"] = "0px"
-            object.style.removeProperty("right");
-            return
         }
 
         function ToggleCrosshair(){
-            Crosshair_enabled = (Crosshair_enabled ? false : true);
-            w.localStorage.setItem("Crosshair_enabled", Crosshair_enabled)
-            toggleButton(   crosshairToggle.children.length === 0
-                            ? crosshairToggle
-                            : crosshairToggle.children[0],
-                            Crosshair_enabled
-                        );
-            return;
+            crosshair.enabled = (crosshair.enabled ? false : true);
+            window.localStorage.setItem("crosshair_enabled", crosshair.enabled)
+            const object = (
+                crosshairToggle.children.length === 0
+                ? crosshairToggle
+                : crosshairToggle.children[0]
+            )
+            let toggle = toggleButton.bind(object);
+            toggle(crosshair.enabled);
         }
 
-        let SettingMenuOpen = false
+        let setting_open = false;
+
         function ShowSettingsMenu(toggle){
             SettingsMenuElement.style['display'] = (toggle ? " block" : "none");
             if (toggle)
@@ -709,24 +642,21 @@
                 SettingsMenuElement.style["top"] = SettingsMenuElement.clientHeight * -1 + Settings.Button.IconSize + "px";
                 AnimateOpacity(SettingsMenuElement, 0.2, 16)
             }
-            return;
         }
-        function UpdateSettingsMenu(e)
+        
+        function UpdateSettingsMenu()
         {
-                if(SettingMenuOpen)
+                if(setting_open)
                 {
-                    SettingMenuOpen = false;
                     ShowSettingsMenu(false);
                     document.removeEventListener("click", CloseMenu);
-                    return;
+                } else {
+                    ShowSettingsMenu(true);
+                    document.addEventListener("click", CloseMenu);
                 }
-
-                SettingMenuOpen = true;
-                ShowSettingsMenu(true);
-                document.addEventListener("click", CloseMenu);
-                return;
-
+                setting_open = setting_open ? false : true;
         }
+
         function CloseMenu(e)
         {
             if(e.target.id === "crosshairToggle" || e.target.parentElement.id == "crosshairToggle"){
@@ -734,7 +664,7 @@
             }
             if(e.target.class !== "Settings")
             {
-                SettingMenuOpen = false;
+                setting_open = false;
                 SettingsMenuElement.style['display'] = "none";
                 document.removeEventListener("click", CloseMenu);
             }
@@ -743,51 +673,43 @@
 
         function UpdateCrosshairSize(e)
         {
-            
-            e.target.value = sanitizeInput(e.target.value);
-
-            Crosshair_size = e.target.value;
-            Crosshair_offset = (e.target.value / 2) + 7;
-
-            offsetCenter[0] = Center[0] - Crosshair_offset;
-            offsetCenter[1] = Center[1] - Crosshair_offset;
-
-            CrosshairElement.style["width"] = e.target.value + "px";
-            CrosshairElement.style["height"] = e.target.value + "px";
-
-            w.localStorage.setItem("Crosshair_size", e.target.value)
+            this.value = sanitizeInput(this.value);
+            crosshair.size = this.value;
+            crosshair.offset = (this.value / 2) + 7;
+            CrosshairElement.size(this.value)
+            window.localStorage.setItem("crosshair_size", this.value)
         }
 
         function UpdateCrosshairRadius(e)
         {
-            e.target.value = sanitizeInput(e.target.value);
-            Crosshair_radius = e.target.value
-
-            w.localStorage.setItem("Crosshair_radius", e.target.value)
+            this.value = sanitizeInput(this.value);
+            crosshair.radius = this.value
+            window.localStorage.setItem("crosshair_radius", this.value)
         }
 
         // Load settings
         function loadSettings() {
-            if (w.localStorage.getItem("nick") != null) {
-                var nick = w.localStorage.getItem("nick");
+            if (window.localStorage.getItem("nick") != undefined) {
+                var nick = window.localStorage.getItem("nick");
                 document.getElementById("nick").value = nick;
             }
-            if (w.localStorage.getItem("rendermode") != null) {
-                var mode = parseInt(w.localStorage.getItem("rendermode"));
+            if (window.localStorage.getItem("rendermode") != undefined) {
+                var mode = parseInt(window.localStorage.getItem("rendermode"));
                 if (mode >= 1 && mode <= 3) {
                     renderMode = mode;
                 }
             }
         }
+      
         // Get nick
         function getNick() {
             var nick = document.getElementById("nick").value;
-            w.localStorage.setItem("nick", nick);
+            window.localStorage.setItem("nick", nick);
         }
         // Connection status
         function connectionStatus() {
-            if (!w.connecting || retry == 10) {
-                w.forcing = false;
+            if (!window.connecting || retry == 10) {
+                window.forcing = false;
                 retry = 0;
                 return;
             }
@@ -796,22 +718,22 @@
         }
         // Force connect
         function forceConnect() {
-            if (inpIP.value.length == 0 || !w.connect) {
+            if (inpIP.value.length == 0 || !window.connect) {
                 return;
             }
-            w.forcing = true;
-            if (!w.bso) {
-                w.bso = {};
+            window.forcing = true;
+            if (!window.bso) {
+                window.bso = {};
             }
             var srv = inpIP.value.trim().split(":");
-            w.bso.ip = srv[0];
-            w.bso.po = srv[1];
-            w.connect();
+            window.bso.ip = srv[0];
+            window.bso.po = srv[1];
+            window.connect();
             setTimeout(connectionStatus, 1000);
         }
         // Get servers list
         function getServersList() {
-            if (w.sos && w.sos.length > 0) {
+            if (window.sos && window.sos.length > 0) {
                 var selectSrv = document.getElementById("select-srv");
                 for (var i = 0; i < sos.length; i++) {
                     var srv = sos[i];
@@ -830,17 +752,17 @@
         }
         // Resize view
         function resizeView() {
-            if (w.resize) {
-                w.lww = 0; // Reset width (force resize)
-                w.wsu = 0; // Clear ad space
-                w.resize();
-                var wh = Math.ceil(w.innerHeight);
+            if (window.resize) {
+                window.lww = 0; // Reset width (force resize)
+                window.wsu = 0; // Clear ad space
+                window.resize();
+                var wh = Math.ceil(window.innerHeight);
                 if (wh < 800) {
                     var login = document.getElementById("login");
-                    w.lgbsc = wh / 800;
-                    login.style.top = - (Math.round(wh * (1 - w.lgbsc) * 1E5) / 1E5) + "px";
-                    if (w.trf) {
-                        w.trf(login, "scale(" + w.lgbsc + "," + w.lgbsc + ")");
+                    window.lgbsc = wh / 800;
+                    login.style.top = - (Math.round(wh * (1 - window.lgbsc) * 1E5) / 1E5) + "px";
+                    if (window.trf) {
+                        window.trf(login, "scale(" + window.lgbsc + "," + window.lgbsc + ")");
                     }
                 }
             } else {
@@ -849,9 +771,9 @@
         }
         // Set leaderboard
         function setLeaderboard() {
-            if (w.lbh) {
-                w.lbh.textContent = "Mod by SonDerece ♈";
-                w.lbh.style.fontSize = "20px";
+            if (window.lbh) {
+                window.lbh.textContent = "Mod by SonDerece ♈";
+                window.lbh.style.fontSize = "20px";
             } else {
                 setTimeout(setLeaderboard, 100);
             }
@@ -859,11 +781,11 @@
         // Set normal mode
         function setNormalMode() {
             normalMode = true;
-            w.ggbg = true;
-            if (!w.bgp2 && bgImage) {
-                w.bgp2 = bgImage;
+            window.ggbg = true;
+            if (!window.bgp2 && bgImage) {
+                window.bgp2 = bgImage;
             }
-            w.render_mode = 2;
+            window.render_mode = 2;
         }
         // Set graphics
         function setGraphics() {
@@ -876,34 +798,34 @@
             if (normalMode) {
                 normalMode = false;
             }
-            if (w.want_quality && w.want_quality != 0) {
-                w.want_quality = 0;
-                w.localStorage.setItem("qual", "0");
-                w.grqi.src = "/s/lowquality.png";
+            if (window.want_quality && window.want_quality != 0) {
+                window.want_quality = 0;
+                window.localStorage.setItem("qual", "0");
+                window.grqi.src = "/s/lowquality.png";
             }
-            if (w.ggbg && w.gbgmc) {
-                w.ggbg = false;
+            if (window.ggbg && window.gbgmc) {
+                window.ggbg = false;
             }
-            if (w.bgp2) {
-                bgImage = w.bgp2;
-                w.bgp2 = null;
+            if (window.bgp2) {
+                bgImage = window.bgp2;
+                window.bgp2 = undefined;
             }
-            if (w.high_quality) {
-                w.high_quality = false;
+            if (window.high_quality) {
+                window.high_quality = false;
             }
-            if (w.gla && w.gla != 0) {
-                w.gla = 0;
+            if (window.gla && window.gla != 0) {
+                window.gla = 0;
             }
-            if (w.render_mode && w.render_mode != renderMode) {
-                w.render_mode = renderMode;
+            if (window.render_mode && window.render_mode != renderMode) {
+                window.render_mode = renderMode;
             }
         }
 
         // Show FPS
         function showFPS() {
-            if (w.playing && fpsHUD && w.fps && w.lrd_mtm) {
-                if (Date.now() - w.lrd_mtm > 970) {
-                    fpsHUD.textContent = "FPS: " + w.fps;
+            if (window.playing && fpsHUD && window.fps && window.lrd_mtm) {
+                if (Date.now() - window.lrd_mtm > 970) {
+                    fpsHUD.textContent = "FPS: " + window.fps;
                 }
             }
             setTimeout(showFPS, 30);
@@ -911,12 +833,12 @@
         // Update loop
         function updateLoop() {
             setGraphics();
-            if (w.playing) {
+            if (window.playing) {
                 if (positionHUD) {
-                    positionHUD.textContent = "X: " + (~~w.view_xx || 0) + " Y: " + (~~w.view_yy || 0);
+                    positionHUD.textContent = "X: " + (~~window.view_xx || 0) + " Y: " + (~~window.view_yy || 0);
                 }
-                if (inpIP && w.bso && currentIP != w.bso.ip + ":" + w.bso.po) {
-                    currentIP = w.bso.ip + ":" + w.bso.po;
+                if (inpIP && window.bso && currentIP != window.bso.ip + ":" + window.bso.po) {
+                    currentIP = window.bso.ip + ":" + window.bso.po;
                     inpIP.value = currentIP;
                     if (ipHUD) {
                         ipHUD.textContent = "IP: " + currentIP;
@@ -927,13 +849,13 @@
         }
             // Change skin
         function changeSkin() {
-            if (w.playing && w.snake != null) {
-                var skin = w.snake.rcv;
+            if (window.playing && window.snake != undefined) {
+                var skin = window.snake.rcv;
                 skin++;
-                if (skin > w.max_skin_cv) {
+                if (skin > window.max_skin_cv) {
                     skin = 0;
                 }
-                w.setSkin(w.snake, skin);
+                window.setSkin(window.snake, skin);
             }
         }
         // Rotate skin
@@ -946,53 +868,55 @@
         }
         // Quit to menu
         function quit() {
-            if (w.playing) {
+            if (window.playing) {
                 HideCrosshair();
-                w.want_close_socket = true;
-                w.dead_mtm = 1;
-                if (w.ws) {
-                    w.ws.close();
-                    w.ws = null;
+                window.want_close_socket = true;
+                window.dead_mtm = 1;
+                if (window.ws) {
+                    window.ws.close();
+                    window.ws = undefined;
                 }
-                w.playing = w.connected = false;
-                w.resetGame();
-                w.play_btn.setEnabled(true);
+                window.playing = window.connected = false;
+                window.resetGame();
+                window.play_btn.setEnabled(true);
             }
-        }
-        function GetDocumentCenter()
-        {
-            Center[0] = (window.innerWidth / 2);
-            Center[1] = (window.innerHeight / 2);
-            offsetCenter[0] = Center[0] - Crosshair_offset;
-            offsetCenter[1] = Center[1] - Crosshair_offset;
         }
         function GetMousePosition(e)
         {
-
                 window.mouseX = e.clientX;
                 window.mouseY = e.clientY;
         }
+
         function ClearMousePosition()
         {
             window.removeEventListener("mousemove", GetMousePosition);
             clearInterval(mouseLoop);
-            mouseLoop = null;
+            mouseLoop = undefined;
         }
+
         function updateMousePositon (){
                 window.addEventListener("mousemove", GetMousePosition);
+
+                let center = [window.innerWidth / 2, window.innerHeight / 2]
+                let offset_center = [center[0] - crosshair.offset, center[1] - crosshair.offset]
+
+                window.addEventListener("resize", () => {
+                    center = [window.innerWidth / 2, window.innerHeight / 2]
+                    offset_center = [center[0] - crosshair.offset, center[1] - crosshair.offset]
+                })
+
                 mouseLoop = setInterval(function()
-                    {
-                        var dx = window.mouseX - Center[0];
-                        var dy = window.mouseY - Center[1];
-                        var scalar = Crosshair_radius / (dx**2 + dy**2)**0.5;
-                        CrosshairElement.style["transform"] = "translate(" + (offsetCenter[0] + dx * scalar)+"px,"+ (offsetCenter[1] + dy * scalar)+"px)";
+                    {  
+                        var dx = window.mouseX - center[0];
+                        var dy = window.mouseY - center[1];
+                        var scalar = crosshair.radius / (dx**2 + dy**2)**0.5;
+                        CrosshairElement.style["transform"] = "translate(" + (offset_center[0] + dx * scalar)+"px,"+ (offset_center[1] + dy * scalar)+"px)";
                     },
                 17);
         }
         init();
 
-        
-        window.addEventListener("resize", GetDocumentCenter);
+
         // Init 
 
     })(window);
